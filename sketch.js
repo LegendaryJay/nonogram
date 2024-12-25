@@ -4,9 +4,32 @@ class Cell {
     this.yPos = yPos;
     this.theme = theme;
     this.value = 0; // 0: empty, 1: filled, -1: crossed
+    this.isTemp = false;
+    this.tempValue = null;
   }
 
   // Toggle the cell between 0 (empty) and 1 (filled)
+  setCell(value) {
+      this.isTemp = false;
+      this.tempValue = null;
+      this.value = value;
+  }
+
+  setTemp(value) {
+    this.isTemp = true;
+    this.tempValue = value;
+  }
+
+  finalizeTemp(keepTemp) {
+    if (keepTemp) {
+      this.value = this.tempValue;
+    } else {
+      this.tempValue = null;
+    }
+    this.isTemp = false;
+  }
+
+
   toggleCell() {
     this.value = this.value === 0 ? 1 : 0;
   }
@@ -16,34 +39,26 @@ class Cell {
     this.value = this.value !== -1 ? -1 : 0;
   }
 
-  cellDirection(x, y) {
-    let xDir;
-    let yDir;
-
-    if (x >= this.xPos) {
-      xDir = x - this.xPos > this.theme.cellSize ? 1 : 0;
-    } else {
-      xDir = -1;
-    }
-
-    if (y >= this.yPos) {
-      yDir = y - this.yPos > this.theme.cellSize ? 1 : 0;
-    } else {
-      yDir = -1;
-    }
-    return { xDir, yDir };
+  isInCell(x, y) {
+    return (
+      x >= this.xPos &&
+      x <= this.xPos + this.theme.cellSize &&
+      y >= this.yPos &&
+      y <= this.yPos + this.theme.cellSize
+    );
   }
 
   draw() {
+    let drawValue = this.isTemp ? this.tempValue : this.value; 
     strokeWeight(0);
     let fillColor =
-      this.value === 1
+      drawValue === 1
         ? this.theme.cellBackgroundFilled
         : this.theme.cellBackground;
     fill(fillColor);
     rect(this.xPos, this.yPos, this.theme.cellSize, this.theme.cellSize);
 
-    if (this.value < 0) {
+    if (drawValue < 0) {
       let xMiddle = this.xPos + this.theme.cellSize * 0.5;
       let yMiddle = this.yPos + this.theme.cellSize * 0.5;
       let length = this.theme.cellCrossSize * 0.5;
@@ -125,12 +140,25 @@ class Board {
     this.theme = theme.data;
     this.xStart = 10 + 3 * this.theme.cellSize;
     this.yStart = 10 + 3 * this.theme.cellSize;
+    
+    this.cellPositions = { rows: [], columns: [] };
+
+    this.cellPositions.rows = Array.from({ length: this.rows }, (_, rowIndex) => {
+      return this.xIndexToCoordinate(rowIndex);
+    }
+    );
+
+    this.cellPositions.columns = Array.from({ length: this.columns }, (_, colIndex) => {
+      return this.yIndexToCoordinate(colIndex);
+    }
+    );
+
     this.clues = []
     for (let columnI = 0; columnI < clues.columns.length; columnI++) {
       this.clues.push(
         new ClueGroup(
           true, 
-          [this.indexToPos(this.xStart, columnI, true), this.yStart - this.theme.outlineWideSize * 0.5], 
+          [this.xIndexToCoordinate(columnI), this.yStart - this.theme.outlineWideSize * 0.5 - this.theme.clueMargin], 
           clues.columns[columnI], 
           this.theme
         )
@@ -141,7 +169,7 @@ class Board {
       this.clues.push(
         new ClueGroup(
           false, 
-          [this.xStart - this.theme.outlineWideSize * 0.5, this.indexToPos(this.yStart, rowI, true)], 
+          [this.xStart - this.theme.outlineWideSize * 0.5 - this.theme.clueMargin, this.yIndexToCoordinate(rowI) ], 
           clues.rows[rowI], 
           this.theme
         )
@@ -153,18 +181,16 @@ class Board {
         { length: this.rows },
         (_, rowIndex) =>
           new Cell(
-            this.indexToPos(this.xStart, colIndex, true), // x position
-            this.indexToPos(this.yStart, rowIndex, true), // y position
+            this.xIndexToCoordinate(colIndex), // x position
+            this.yIndexToCoordinate(rowIndex), // y position
             this.theme
           )
       )
     );
   }
 
-  indexToPos(startPos, index, cell = false) {
-    if (cell) {
-      startPos += this.theme.outlineWideSize * 0.5;
-    }
+  _indexToSingleCoordinate(startPos, index) {
+    startPos += this.theme.outlineWideSize * 0.5;
     const thickLines = Math.floor(index / 5);
     const thinLines = index - thickLines;
     return (
@@ -175,37 +201,94 @@ class Board {
     );
   }
 
+  xIndexToCoordinate(xIndex) {
+    return this._indexToSingleCoordinate(this.xStart, xIndex);
+  }
+
+  yIndexToCoordinate(yIndex) {
+    return this._indexToSingleCoordinate(this.yStart, yIndex);
+  }
+
+
+  indexToCoordinate(xIndex, yIndex) {
+    return {
+      x: this.xIndexToCoordinate(xIndex),
+      y: this.yIndexToCoordinate(yIndex),
+    };
+  }
+
+
+  coordinateToIndex(x, y) {
+    let xIndex = null;
+    let yIndex = null;
+
+    for (let i = 0; i < this.cellPositions.columns.length; i++) {
+      if (x < this.cellPositions.columns[i]) {
+        return null;
+      }
+      if (x >= this.cellPositions.columns[i] && x <= this.cellPositions.columns[i] + this.theme.cellSize) {
+        xIndex = i;
+        break;
+      }
+    }
+    for (let i = 0; i < this.cellPositions.rows.length; i++) {
+      if (y < this.cellPositions.rows[i]) {
+        return null;
+      }
+      if (y >= this.cellPositions.rows[i] && y <= this.cellPositions.rows[i] + this.theme.cellSize) {
+        yIndex = i;
+        break;
+      }
+    }
+    if (xIndex == null || yIndex == null) {
+      return null;
+    }
+    return { x: xIndex, y: yIndex };
+  }
+
   handleMouseClick() {
-    let x = 0;
-    let y = 0;
-    let cell;
-    let success = false;
-
-    while (x < this.columns && y < this.rows) {
-      cell = this.getCell(x, y);
-      let dir = cell.cellDirection(mouseX, mouseY);
-      let xDir = dir.xDir;
-      let yDir = dir.yDir;
-      if (xDir === -1 || yDir === -1) {
-        break;
-      }
-      if (xDir === 0 && yDir === 0) {
-        success = true;
-        console.log("Clicked!", x + 1, y + 1);
-        break;
-      }
-
-      x += xDir;
-      y += yDir;
-    }
-    if (success === true) {
+    let index = this.coordinateToIndex(mouseX, mouseY);
+    if (index != null) {
+      let cell = this.getCell(index.x, index.y);
       if (mouseButton === LEFT) {
-        cell.toggleCell();
-      } else {
-        cell.toggleCross();
-      }
-      cell.draw();
+            cell.toggleCell();
+            print("toggled cell");
+          } else {
+            print("toggled cross");
+            cell.toggleCross();
+          }
+          cell.draw();
     }
+    // let x = 0;
+    // let y = 0;
+    // let cell;
+    // let success = false;
+
+    // while (x < this.columns && y < this.rows) {
+    //   cell = this.getCell(x, y);
+    //   let dir = cell.cellDirection(mouseX, mouseY);
+    //   let xDir = dir.xDir;
+    //   let yDir = dir.yDir;
+    //   if (xDir === -1 || yDir === -1) {
+    //     break;
+    //   }
+    //   if (xDir === 0 && yDir === 0) {
+    //     success = true;
+    //     console.log("Clicked!", x + 1, y + 1);
+    //     break;
+    //   }
+
+    //   x += xDir;
+    //   y += yDir;
+    // }
+    // if (success === true) {
+    //   if (mouseButton === LEFT) {
+    //     cell.toggleCell();
+    //   } else {
+    //     cell.toggleCross();
+    //   }
+    //   cell.draw();
+    // }
   }
 
   // Get the cell object at the specified coordinates
@@ -258,12 +341,12 @@ class Board {
     strokeWeight(0);
     let thickLineStartX = this.xStart - this.theme.outlineWideSize * 0.5;
     let thickLineStarty = this.yStart - this.theme.outlineWideSize * 0.5;
-    let thickLineSizeX =
-      this.indexToPos(0, this.columns - 1) +
+    let thickLineSizeY =
+      this._indexToSingleCoordinate(0, this.rows - 1) +
       this.theme.cellSize +
       this.theme.outlineWideSize * 2;
-    let thickLineSizeY =
-      this.indexToPos(0, this.rows - 1) +
+    let thickLineSizeX =
+      this._indexToSingleCoordinate(0, this.columns - 1) +
       this.theme.cellSize +
       this.theme.outlineWideSize * 2;
     rect(thickLineStartX, thickLineStarty, thickLineSizeX, thickLineSizeY);
@@ -274,9 +357,9 @@ class Board {
     });
 
     for (let y = 0; y < this.rows; y++) {
-      let yPos = this.indexToPos(this.yStart, y, true);
+      let yPos = this.yIndexToCoordinate(y);
       for (let x = 0; x < this.columns; x++) {
-        let xPos = this.indexToPos(this.xStart, x, true);
+        let xPos = this.xIndexToCoordinate(x);
 
         if (x % 5 == 0 && y % 5 == 0) {
           fill(this.theme.outlineColor);
@@ -314,6 +397,7 @@ let defaultTheme = {
   clueRound: 5,
   clueColor: "#F4F4FF",
   clueTextColor: "black",
+  clueMargin: 3,
   outlineColor: "#888888",
   outlineWideColor: "#000000",
   outlineSize: 1,
@@ -419,12 +503,57 @@ function setup() {
   console.log(board.state);
 }
 
+// ########### //
+// ########### //
+// messing with click and drag functions
+let mouseInfo = {
+  reset : function(){
+    //set all properties to null
+    for (let key in this){
+      this[key] = null;
+    }
+  }
+}
+mouseInfo.reset();
+
 function draw() {
+  if (mouseInfo.currentPos != null) {
+
+  }
   //background(220);
 }
 
-function mousePressed() {
-  console.log("click!");
-  // Check if a cell is clicked
-  board.handleMouseClick();
+function mouseDragged() {
+  mouseInfo.currentPos = [mouseX, mouseY]
 }
+
+function mousePressed() {
+  let index = board.coordinateToIndex(mouseX, mouseY);
+  if (index != null) {
+    let cell = board.getCell(index.x, index.y);
+    if (mouseButton === LEFT) {
+      cell.setTemp(1);
+    } else {
+      cell.setTemp(-1);
+    }
+    cell.draw();
+  }
+  print(index)
+  mouseInfo.mouseButton = mouseButton
+  mouseInfo.initialPos = [mouseX, mouseY]
+  mouseInfo.currentPos = [mouseX, mouseY]
+
+}
+
+function mouseReleased() {
+  stroke('magenta');
+  strokeWeight(5);
+
+  line( mouseInfo.initialPos[0], mouseInfo.initialPos[1], mouseInfo.currentPos[0], mouseInfo.currentPos[1]);
+  //mouseInfo.reset();
+}
+
+// function mousePressed() {
+//   console.log("click!");
+//   board.handleMouseClick(mouseButton);
+// }
