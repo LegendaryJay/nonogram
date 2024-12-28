@@ -40,35 +40,8 @@ function setup() {
 
   board = new Board(clues);
   board.render();
-
-  console.log(board.state);
 }
 
-// ########### //
-// ########### //
-// messing with click and drag functions
-
-
-
-// drag funuctionality
-  // get initial index from mouse coordinates
-  // assume that mouse click is from the center
-  // determine the direction of the mouse if index is 1 away in only x or only y
-  // get the x or y value based on the direction and mouse position
-
-
-let mouseInfo = {
-  reset : function(){
-    //set all properties to null
-    for (let key in this){
-      this[key] = null;
-    }
-  }
-}
-mouseInfo.reset();
-
-function draw() {
-}
 
 let dragManager = {
   isDragging: false,
@@ -166,16 +139,3 @@ function mousePressed() {
 function mouseReleased() {
   dragManager.endDrag();
 }
-
-// function mousePressed() {
-//   console.log("click!");
-//   board.handleMouseClick(mouseButton);
-// }
-
-
-/*
-TODO: Coordinate Conversion
-Problem: _singleCoordinateToIndex could be simplified and its logic made more robust to edge cases.
-Solution: Refactor the logic into smaller reusable functions to avoid redundancy and improve readability.
-
- */
