@@ -68,100 +68,103 @@ let mouseInfo = {
 mouseInfo.reset();
 
 function draw() {
-  if (mouseInfo.currentPos != null) {
-
-  }
-  //background(220);
 }
-let selected = {
-  first: null, // [x, y]
-  value: null, // -1, 1, or 0
-  x: null, // index
-  y: null, // index
-  axis: null, // x or y
+
+let dragManager = {
+  isDragging: false,
   isCross: false,
+  value: null,
+  first: null,
+  axis: null,
+  x: null,
+  y: null,
   reset: function(){
+    this.isDragging = false;
+    this.isCross = false;
     this.value = null;
     this.first = null;
     this.axis = null;
     this.x = null;
     this.y = null;
-    this.isCross = false;
-  }
-}; 
-let select = function(){
-
-  if (selected.first == null){
-    return;
-  }
-
-  // get indexes closest to mouse- x and y and record to range
-  let coords = board.coordinateToIndex(mouseX, mouseY);
-  selected.x = coords.x;
-  selected.y = coords.y;
-
-  if (selected.axis == null){
-    let xLength = Math.abs(selected.first[0] - selected.x);
-    let yLength = Math.abs(selected.first[1] - selected.y);
-
-    if (xLength > 1 || yLength > 1){
-      selected.axis = xLength > yLength ? "x" : "y";
+  },
+  startDrag: function(){
+    this.reset();
+    let coords = board.coordinateToIndex(mouseX, mouseY);
+    if (coords.isWithinBoard == false || coords.isWithinCell == false){
+      return;
     }
-  }  
 
-  selected.x = Math.max( Math.min(selected.x, board.columns - 1), 0);
-  selected.y = Math.max( Math.min(selected.y, board.rows - 1), 0);
+    this.isDragging = true;
+    this.x = coords.x;
+    this.y = coords.y;
+    this.first = [this.x, this.y];
+    
+    let cell = board.getCell(this.x, this.y);
 
-  if (selected.axis == "x"){
-    let minX = Math.min(selected.first[0], selected.x);
-    let maxX = Math.max(selected.first[0], selected.x);
-
-
-    for (let i = minX; i <= maxX; i++){
-      let cell = board.getCell(i, selected.first[1]);
-      if (cell.value != selected.value) continue; 
-      cell.toggle(selected.isCross);
-      cell.draw();
+    this.value = cell.value;
+    this.isCross = mouseButton === RIGHT;
+    cell.toggle(this.isCross);
+    cell.draw();
+  },
+  drag: function(){
+    if (this.isDragging == false){
+      return;
     }
-  }
-  if (selected.axis == "y"){
-    let minY = Math.min(selected.first[1], selected.y);
-    let maxY = Math.max(selected.first[1], selected.y);
+    let coords = board.coordinateToIndex(mouseX, mouseY);
+    this.x = coords.x;
+    this.y = coords.y;
 
-    for (let i = minY; i <= maxY; i++){
-      let cell = board.getCell(selected.first[0], i);
-      if (cell.value != selected.value) continue; 
-      cell.toggle(selected.isCross);
-      cell.draw();
+    if (this.axis == null){
+      let xLength = Math.abs(this.first[0] - this.x);
+      let yLength = Math.abs(this.first[1] - this.y);
+
+      if (xLength > 1 || yLength > 1){
+        this.axis = xLength > yLength ? "x" : "y";
+      }
+    }  
+
+    this.x = Math.max( Math.min(this.x, board.columns - 1), 0);
+    this.y = Math.max( Math.min(this.y, board.rows - 1), 0);
+
+    if (this.axis == "x"){
+      let minX = Math.min(this.first[0], this.x);
+      let maxX = Math.max(this.first[0], this.x);
+
+      for (let i = minX; i <= maxX; i++){
+        let cell = board.getCell(i, this.first[1]);
+        if (cell.value != this.value) continue; 
+        cell.toggle(this.isCross);
+        cell.draw();
+      }
     }
+    if (this.axis == "y"){
+      let minY = Math.min(this.first[1], this.y);
+      let maxY = Math.max(this.first[1], this.y);
+
+      for (let i = minY; i <= maxY; i++){
+        let cell = board.getCell(this.first[0], i);
+        if (cell.value != this.value) continue; 
+        cell.toggle(this.isCross);
+        cell.draw();
+      }
+    }
+  },
+  endDrag: function(){
+    this.reset();
   }
 
 }
-   
-
 
 function mouseDragged() {
-  select();
+  dragManager.drag();
 }
 
 function mousePressed() {
-  selected.reset();
-  let index = board.coordinateToIndex(mouseX, mouseY);
-  if (index.isWithinBoard == false) {
-    return;
-  }
-  const cell = board.getCell(index.x, index.y);
-  selected.value = cell.value;
-  selected.first = [index.x, index.y];
-  selected.isCross = mouseButton === RIGHT;
-
-  cell.toggle(selected.isCross);
-  cell.draw();
+  dragManager.startDrag();
 }
 
 function mouseReleased() {
-  stroke('magenta');
-  strokeWeight(5);
+  dragManager.endDrag();
 }
 
 // function mousePressed() {
@@ -171,18 +174,8 @@ function mouseReleased() {
 
 
 /*
-TODO: Handling State Updates
-Problem: mouseDragged and mousePressed are a bit unclear and partially redundant.
-Solution:
-Introduce a clear state machine to track drag state (e.g., whether dragging has started, what type of cell interaction is being performed).
-Use a helper function to handle toggling cells during drag.
-
-
 TODO: Coordinate Conversion
 Problem: _singleCoordinateToIndex could be simplified and its logic made more robust to edge cases.
 Solution: Refactor the logic into smaller reusable functions to avoid redundancy and improve readability.
 
-TODO: Event Handling and Dragging Logic
-Problem: The dragging logic (mouseDragged, mousePressed, mouseReleased) is partially implemented and could cause bugs in edge cases (e.g., dragging outside the board).
-Solution: Refactor select and dragging functions for clarity and ensure out-of-bound drag events are handled gracefully.
  */

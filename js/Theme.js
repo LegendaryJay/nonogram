@@ -60,15 +60,5 @@ class Theme {
     updateTheme(newData) {
       Object.assign(this.data, newData);
     }
-  
-    // Getter for theme properties
-    get(key) {
-      return this.data[key];
-    }
-  
-    // Setter for theme properties
-    set(key, value) {
-      this.data[key] = value;
-    }
   }
 
