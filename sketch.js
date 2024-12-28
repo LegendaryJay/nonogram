@@ -15,21 +15,13 @@ class Cell {
       this.value = value;
   }
 
-  setTemp(value) {
-    this.isTemp = true;
-    this.tempValue = value;
-  }
-
-  finalizeTemp(keepTemp) {
-    if (keepTemp) {
-      this.value = this.tempValue;
+  toggle(isCross) {
+    if (isCross) {
+      this.toggleCross();
     } else {
-      this.tempValue = null;
+      this.toggleCell();
     }
-    this.isTemp = false;
   }
-
-
   toggleCell() {
     this.value = this.value === 0 ? 1 : 0;
   }
@@ -217,34 +209,95 @@ class Board {
     };
   }
 
+  _singleCoordinateToIndex(startPos, coordinate) {
+    startPos += this.theme.outlineWideSize * 0.5; // Adjust start position like in _indexToSingleCoordinate
+  
+    const { cellSize, outlineSize, outlineWideSize } = this.theme;
+  
+    // Calculate the distance from startPos to the coordinate
+    const distance = coordinate - startPos;
 
-  coordinateToIndex(x, y) {
-    let xIndex = null;
-    let yIndex = null;
-
-    for (let i = 0; i < this.cellPositions.columns.length; i++) {
-      if (x < this.cellPositions.columns[i]) {
-        return null;
-      }
-      if (x >= this.cellPositions.columns[i] && x <= this.cellPositions.columns[i] + this.theme.cellSize) {
-        xIndex = i;
-        break;
-      }
+    if (distance < 0) {
+      return { index: -1, isWithinCell: false };
     }
-    for (let i = 0; i < this.cellPositions.rows.length; i++) {
-      if (y < this.cellPositions.rows[i]) {
-        return null;
-      }
-      if (y >= this.cellPositions.rows[i] && y <= this.cellPositions.rows[i] + this.theme.cellSize) {
-        yIndex = i;
-        break;
-      }
+  
+    // Calculate the number of thick lines (every 5 cells) and thin lines
+    const combinedCellSize = cellSize + outlineSize; // Standard size of a cell plus a thin line
+    const thickBlockSize = combinedCellSize * 5 + outlineWideSize; // Size of 5 cells with 4 thin lines and a thick line
+  
+    // Find the thick block and adjust for negative coordinates
+    let thickBlockIndex = Math.floor(distance / thickBlockSize);
+    let remainingDistance = distance % thickBlockSize;
+  
+    if (remainingDistance < 0) {
+      thickBlockIndex -= 1;
+      remainingDistance += thickBlockSize;
     }
-    if (xIndex == null || yIndex == null) {
-      return null;
+  
+    // Calculate the thin line index within the block
+    let thinLines = Math.floor(remainingDistance / combinedCellSize);
+    let offset = remainingDistance - thinLines * combinedCellSize;
+  
+    if (offset >= cellSize) {
+      thinLines += 1; // Move to the next thin line if offset exceeds cell size
     }
-    return { x: xIndex, y: yIndex };
+  
+    const index = thickBlockIndex * 5 + thinLines;
+  
+    // Calculate the actual start and end of the cell for this index
+    const thickLines = Math.floor(index / 5);
+    const thinLinesWithinIndex = index - thickLines;
+  
+    const cellStart =
+      startPos +
+      index * cellSize +
+      thinLinesWithinIndex * outlineSize +
+      thickLines * outlineWideSize;
+    const cellEnd = cellStart + cellSize;
+  
+    // Check if the coordinate is within the cell
+    const isWithinCell = coordinate >= cellStart && coordinate < cellEnd;
+  
+    return { index, isWithinCell };
   }
+  coordinateToIndex(x, y) {
+    const xIndex = this._singleCoordinateToIndex(this.xStart, x);
+    const yIndex = this._singleCoordinateToIndex(this.yStart, y);
+
+    const isWithinCell = xIndex.isWithinCell && yIndex.isWithinCell;
+    const isWithinBoard = xIndex.index >= 0 && xIndex.index < this.columns && yIndex.index >= 0 && yIndex.index < this.rows;
+
+    return { x: xIndex.index, y: yIndex.index, isWithinCell, isWithinBoard };
+  }
+  
+
+  // coordinateToIndex(x, y) {
+  //   let xIndex = null;
+  //   let yIndex = null;
+
+  //   for (let i = 0; i < this.cellPositions.columns.length; i++) {
+  //     if (x < this.cellPositions.columns[i]) {
+  //       return null;
+  //     }
+  //     if (x >= this.cellPositions.columns[i] && x <= this.cellPositions.columns[i] + this.theme.cellSize) {
+  //       xIndex = i;
+  //       break;
+  //     }
+  //   }
+  //   for (let i = 0; i < this.cellPositions.rows.length; i++) {
+  //     if (y < this.cellPositions.rows[i]) {
+  //       return null;
+  //     }
+  //     if (y >= this.cellPositions.rows[i] && y <= this.cellPositions.rows[i] + this.theme.cellSize) {
+  //       yIndex = i;
+  //       break;
+  //     }
+  //   }
+  //   if (xIndex == null || yIndex == null) {
+  //     return null;
+  //   }
+  //   return { x: xIndex, y: yIndex };
+  // }
 
   handleMouseClick() {
     let index = this.coordinateToIndex(mouseX, mouseY);
@@ -506,6 +559,16 @@ function setup() {
 // ########### //
 // ########### //
 // messing with click and drag functions
+
+
+
+// drag funuctionality
+  // get initial index from mouse coordinates
+  // assume that mouse click is from the center
+  // determine the direction of the mouse if index is 1 away in only x or only y
+  // get the x or y value based on the direction and mouse position
+
+
 let mouseInfo = {
   reset : function(){
     //set all properties to null
@@ -522,35 +585,135 @@ function draw() {
   }
   //background(220);
 }
+let selected = {
+  first: null, // [x, y]
+  value: null, // -1, 1, or 0
+  x: null, // index
+  y: null, // index
+  axis: null, // x or y
+  isCross: false,
+  reset: function(){
+    this.value = null;
+    this.first = null;
+    this.axis = null;
+    this.x = null;
+    this.y = null;
+    this.isCross = false;
+  }
+}; 
+let select = function(){
+
+  if (selected.first == null){
+    return;
+  }
+
+  // get indexes closest to mouse- x and y and record to range
+  let coords = board.coordinateToIndex(mouseX, mouseY);
+  selected.x = coords.x;
+  selected.y = coords.y;
+
+  if (selected.axis == null){
+    let xLength = Math.abs(selected.first[0] - selected.x);
+    let yLength = Math.abs(selected.first[1] - selected.y);
+
+    if (xLength > 1 || yLength > 1){
+      selected.axis = xLength > yLength ? "x" : "y";
+    }
+  }  
+
+  selected.x = Math.max( Math.min(selected.x, board.columns - 1), 0);
+  selected.y = Math.max( Math.min(selected.y, board.rows - 1), 0);
+
+  if (selected.axis == "x"){
+    let minX = Math.min(selected.first[0], selected.x);
+    let maxX = Math.max(selected.first[0], selected.x);
+
+
+    for (let i = minX; i <= maxX; i++){
+      let cell = board.getCell(i, selected.first[1]);
+      if (cell.value != selected.value) continue; 
+      cell.toggle(selected.isCross);
+      cell.draw();
+    }
+  }
+  if (selected.axis == "y"){
+    let minY = Math.min(selected.first[1], selected.y);
+    let maxY = Math.max(selected.first[1], selected.y);
+
+    for (let i = minY; i <= maxY; i++){
+      let cell = board.getCell(selected.first[0], i);
+      if (cell.value != selected.value) continue; 
+      cell.toggle(selected.isCross);
+      cell.draw();
+    }
+  }
+
+}
+   
+
 
 function mouseDragged() {
-  mouseInfo.currentPos = [mouseX, mouseY]
+  select();
+  // let index = board.coordinateToIndex(mouseX, mouseY);
+  // mouseInfo.currentIndex = index;
+  // if (index != null) {
+  //   let xDelta = mouseInfo.currentIndex.x - mouseInfo.initialIndex.x;
+  //   let yDelta = mouseInfo.currentIndex.y - mouseInfo.initialIndex.y;
+  //   if (Math.abs(xDelta ) == 1 && Math.abs(yDelta) == 0){
+  //     mouseInfo.direction = "x";
+  //   } else if (Math.abs(xDelta ) == 0 && Math.abs(yDelta) == 1){
+  //     mouseInfo.direction = "y";
+  //   }
+  //   if (mouseInfo.direction != null){
+  //     if (mouseInfo.direction == "x"){
+  //       for (let i = 0; i < board.columns; i++){
+  //         let cell = board.getCell(i, mouseInfo.initialIndex.y);
+  //         // if cell is in the drag range, set it to temp
+  //         let minX = Math.min(mouseInfo.currentIndex.x, mouseInfo.initialIndex.x);
+  //         let maxX = Math.max(mouseInfo.currentIndex.x, mouseInfo.initialIndex.x);
+  //         if (i <= maxX && i >= minX){
+  //           cell.setTemp(1);
+  //         } else {
+  //           cell.finalizeTemp(false);
+  //         }
+  //         cell.draw();
+  //       }
+  //     }
+  //     if (mouseInfo.direction == "y"){
+  //       for (let i = 0; i < Math.abs(yDelta); i++){
+  //         let x = mouseInfo.initialIndex.x;
+  //         let y = mouseInfo.initialIndex.y + (i + 1) * Math.sign(yDelta);
+  //         let cell = board.getCell(x, y);
+  //         cell.setTemp(1);
+  //         cell.draw();
+  //       }
+  //     }
+  //   }
+  // }
 }
 
 function mousePressed() {
+  selected.reset();
   let index = board.coordinateToIndex(mouseX, mouseY);
-  if (index != null) {
-    let cell = board.getCell(index.x, index.y);
-    if (mouseButton === LEFT) {
-      cell.setTemp(1);
-    } else {
-      cell.setTemp(-1);
-    }
-    cell.draw();
+  if (index.isWithinBoard == false) {
+    return;
   }
-  print(index)
-  mouseInfo.mouseButton = mouseButton
-  mouseInfo.initialPos = [mouseX, mouseY]
-  mouseInfo.currentPos = [mouseX, mouseY]
+  const cell = board.getCell(index.x, index.y);
+  selected.value = cell.value;
+  selected.first = [index.x, index.y];
+  selected.isCross = mouseButton === RIGHT;
 
+  cell.toggle(selected.isCross);
+  cell.draw();
 }
 
 function mouseReleased() {
   stroke('magenta');
   strokeWeight(5);
 
-  line( mouseInfo.initialPos[0], mouseInfo.initialPos[1], mouseInfo.currentPos[0], mouseInfo.currentPos[1]);
+  //line( mouseInfo.initialPos[0], mouseInfo.initialPos[1], mouseInfo.currentPos[0], mouseInfo.currentPos[1]);
   //mouseInfo.reset();
+
 }
 
 // function mousePressed() {
