@@ -168,3 +168,21 @@ function mouseReleased() {
 //   console.log("click!");
 //   board.handleMouseClick(mouseButton);
 // }
+
+
+/*
+TODO: Handling State Updates
+Problem: mouseDragged and mousePressed are a bit unclear and partially redundant.
+Solution:
+Introduce a clear state machine to track drag state (e.g., whether dragging has started, what type of cell interaction is being performed).
+Use a helper function to handle toggling cells during drag.
+
+
+TODO: Coordinate Conversion
+Problem: _singleCoordinateToIndex could be simplified and its logic made more robust to edge cases.
+Solution: Refactor the logic into smaller reusable functions to avoid redundancy and improve readability.
+
+TODO: Event Handling and Dragging Logic
+Problem: The dragging logic (mouseDragged, mousePressed, mouseReleased) is partially implemented and could cause bugs in edge cases (e.g., dragging outside the board).
+Solution: Refactor select and dragging functions for clarity and ensure out-of-bound drag events are handled gracefully.
+ */
