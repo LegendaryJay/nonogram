@@ -9,18 +9,17 @@ class Cell {
 
   // Toggle the cell between 0 (empty) and 1 (filled)
   setCell(value) {
-    this.value = value;
+    if (value !== this.value){
+        this.needsUpdate = true;
+        this.value = value;
+    }
   }
 
   toggle(isCross) {
-    let lastValue = this.value;
     if (isCross) {
-      this.value = this.value !== -1 ? -1 : 0;
+        this.setCell(this.value !== -1 ? -1 : 0)
     } else {
-      this.value = this.value === 0 ? 1 : 0;
-    }
-    if (lastValue != this.value) {
-      this.needsUpdate = true;
+        this.setCell(this.value === 0 ? 1 : 0)
     }
   }
 
