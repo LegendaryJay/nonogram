@@ -40,6 +40,11 @@ function setup() {
 
   board = new Board(clues);
   board.render();
+
+  this.undoButton = createButton('⮪');
+this.undoButton.position(20, 500);
+this.redoButton = createButton('⮩');
+this.redoButton.position(80, 500);
 }
 
 
@@ -139,3 +144,4 @@ function mousePressed() {
 function mouseReleased() {
   dragManager.endDrag();
 }
+

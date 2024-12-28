@@ -160,22 +160,6 @@ class Board {
     return { x: xIndex.index, y: yIndex.index, isWithinCell, isWithinBoard };
   }
 
-
-  handleMouseClick() {
-    let index = this.coordinateToIndex(mouseX, mouseY);
-    if (index != null) {
-      let cell = this.getCell(index.x, index.y);
-      if (mouseButton === LEFT) {
-        cell.toggleCell();
-        print("toggled cell");
-      } else {
-        print("toggled cross");
-        cell.toggleCross();
-      }
-      cell.draw();
-    }
-  }
-
   // Get the cell object at the specified coordinates
   getCell(x, y) {
     if (this.isValidCoordinate(x, y)) {
@@ -265,6 +249,4 @@ class Board {
       }
     }
   }
-
-  
 }

@@ -8,8 +8,16 @@ class Cell {
   }
 
   // Toggle the cell between 0 (empty) and 1 (filled)
-  setCell(value) {
+  setCell(value, ignoreHistory) {
     if (value !== this.value){
+        if (!ignoreHistory){
+            history.push({
+                x: this.xPos,
+                y: this.yPos,
+                value: this.value,
+                lastValue: value,
+          });
+        }
         this.needsUpdate = true;
         this.value = value;
     }
