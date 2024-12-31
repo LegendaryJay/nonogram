@@ -11,7 +11,8 @@ let defaultTheme = {
     clueRound: 5,
     clueColor: "#F4F4FF",
     clueTextColor: "black",
-    clueMargin: 3,
+    clueBoardMargin: 5,
+    clueMargin: 15,
     outlineColor: "#888888",
     outlineWideColor: "#000000",
     outlineSize: 1,
@@ -54,11 +55,6 @@ class Theme {
     // Method to convert the theme object to JSON
     toJSON() {
       return { ...this.data };
-    }
-  
-    // Method to update properties dynamically
-    updateTheme(newData) {
-      Object.assign(this.data, newData);
     }
   }
 

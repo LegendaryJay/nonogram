@@ -68,7 +68,7 @@ let dragManager = {
   startDrag: function(){
     this.reset();
     let coords = board.coordinateToIndex(mouseX, mouseY);
-    if (coords.isWithinBoard == false || coords.isWithinCell == false){
+    if (!coords.isWithinBoard || !coords.isWithinCell){
       return;
     }
 
@@ -85,7 +85,7 @@ let dragManager = {
     cell.draw();
   },
   drag: function(){
-    if (this.isDragging == false){
+    if (!this.isDragging){
       return;
     }
     let coords = board.coordinateToIndex(mouseX, mouseY);

@@ -8,16 +8,8 @@ class Cell {
   }
 
   // Toggle the cell between 0 (empty) and 1 (filled)
-  setCell(value, ignoreHistory) {
+  setCell(value) {
     if (value !== this.value){
-        if (!ignoreHistory){
-            history.push({
-                x: this.xPos,
-                y: this.yPos,
-                value: this.value,
-                lastValue: value,
-          });
-        }
         this.needsUpdate = true;
         this.value = value;
     }
@@ -41,7 +33,7 @@ class Cell {
   }
 
   draw() {
-    if (this.needsUpdate == false) return;
+    if (!this.needsUpdate) return;
     this.needsUpdate = false;
     strokeWeight(0);
     let fillColor =

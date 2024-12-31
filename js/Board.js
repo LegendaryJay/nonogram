@@ -3,57 +3,49 @@ class Board {
     this.rows = clues.rows.length;
     this.columns = clues.columns.length;
     this.theme = theme.data;
-    this.xStart = 10 + 3 * this.theme.cellSize;
-    this.yStart = 10 + 3 * this.theme.cellSize;
 
-    this.cellPositions = { rows: [], columns: [] };
+    this.clueWidth = clues.rows.reduce((acc, clue) => Math.max(acc, clue.length), 0);
+    this.clueHeight = clues.columns.reduce((acc, clue) => Math.max(acc, clue.length), 0);
 
-    this.cellPositions.rows = Array.from(
-      { length: this.rows },
-      (_, rowIndex) => {
-        return this.xIndexToCoordinate(rowIndex);
-      }
-    );
+    let startOffset = this.theme.clueBoardMargin + this.theme.clueMargin;
 
-    this.cellPositions.columns = Array.from(
-      { length: this.columns },
-      (_, colIndex) => {
-        return this.yIndexToCoordinate(colIndex);
-      }
-    );
-
+    this.xStart = this.clueWidth * this.theme.cellSize + startOffset;
+    this.yStart = this.clueHeight * this.theme.cellSize + startOffset;
     this.clues = [];
-    for (let columnI = 0; columnI < clues.columns.length; columnI++) {
+  
+    this.createClueGroup = function(isVertical, index, clues) {
+      let coord;
+      if (isVertical) {
+        let constCoord = this.yStart - this.theme.clueBoardMargin
+        let variableCoord = this.xIndexToCoordinate(index) 
+        coord = [variableCoord, constCoord];
+      } else {
+        let constCoord = this.xStart - this.theme.clueBoardMargin
+        let variableCoord = this.yIndexToCoordinate(index) 
+        coord = [constCoord, variableCoord];
+      }
+
       this.clues.push(
         new ClueGroup(
-          true,
-          [
-            this.xIndexToCoordinate(columnI),
-            this.yStart -
-              this.theme.outlineWideSize * 0.5 -
-              this.theme.clueMargin,
-          ],
-          clues.columns[columnI],
+          isVertical,
+          coord,
+          clues,
           this.theme
         )
       );
+
     }
 
-    for (let rowI = 0; rowI < clues.rows.length; rowI++) {
-      this.clues.push(
-        new ClueGroup(
-          false,
-          [
-            this.xStart -
-              this.theme.outlineWideSize * 0.5 -
-              this.theme.clueMargin,
-            this.yIndexToCoordinate(rowI),
-          ],
-          clues.rows[rowI],
-          this.theme
-        )
-      );
-    }
+    clues.columns.forEach((clue, index) => {
+      let isVertical = true;
+      this.createClueGroup(isVertical, index, clue);
+    });
+
+    clues.rows.forEach((clue, index) => {
+      let isVertical = false;
+      this.createClueGroup(isVertical, index, clue);
+    });
+
 
     this.state = Array.from({ length: this.columns }, (_, colIndex) =>
       Array.from(
@@ -72,6 +64,7 @@ class Board {
     startPos += this.theme.outlineWideSize * 0.5;
     const thickLines = Math.floor(index / 5);
     const thinLines = index - thickLines;
+
     return (
       startPos +
       index * this.theme.cellSize +
@@ -213,11 +206,11 @@ class Board {
     let thickLineSizeY =
       this._indexToSingleCoordinate(0, this.rows - 1) +
       this.theme.cellSize +
-      this.theme.outlineWideSize * 2;
+      this.theme.outlineWideSize * 1.5;
     let thickLineSizeX =
       this._indexToSingleCoordinate(0, this.columns - 1) +
       this.theme.cellSize +
-      this.theme.outlineWideSize * 2;
+      this.theme.outlineWideSize * 1.5;
     rect(thickLineStartX, thickLineStarty, thickLineSizeX, thickLineSizeY);
 
     this.clues.forEach((clue) => {
